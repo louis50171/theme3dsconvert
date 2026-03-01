@@ -60,6 +60,50 @@ def extract_3ds_theme(zip_path):
     return top_path, bottom_path
 
 
+class RoundedButton(tk.Canvas):
+    def __init__(self, parent, text, command, bg_color, hover_color,
+                 fg_color="white", font=("Segoe UI", 10), radius=10,
+                 height=32, width=None, canvas_bg="#2b2b2b", **kwargs):
+        super().__init__(parent, height=height, bg=canvas_bg,
+                         highlightthickness=0, **kwargs)
+        if width:
+            self.config(width=width)
+        self.command = command
+        self.bg_color = bg_color
+        self.hover_color = hover_color
+        self.fg_color = fg_color
+        self.radius = radius
+        self.btn_text = text
+        self.btn_font = font
+        self._current_color = bg_color
+        self.bind("<Enter>", lambda _: self._set_color(hover_color))
+        self.bind("<Leave>", lambda _: self._set_color(bg_color))
+        self.bind("<Button-1>", lambda _: command())
+        self.bind("<Configure>", lambda _: self._draw())
+
+    def _round_rect(self, x1, y1, x2, y2, r, color):
+        kw = {"fill": color, "outline": color}
+        self.create_arc(x1, y1, x1+2*r, y1+2*r, start=90, extent=90, style="pieslice", **kw)
+        self.create_arc(x2-2*r, y1, x2, y1+2*r, start=0, extent=90, style="pieslice", **kw)
+        self.create_arc(x2-2*r, y2-2*r, x2, y2, start=270, extent=90, style="pieslice", **kw)
+        self.create_arc(x1, y2-2*r, x1+2*r, y2, start=180, extent=90, style="pieslice", **kw)
+        self.create_rectangle(x1+r, y1, x2-r, y2, **kw)
+        self.create_rectangle(x1, y1+r, x2, y2-r, **kw)
+
+    def _draw(self):
+        self.delete("all")
+        w, h = self.winfo_width(), self.winfo_height()
+        if w < 2 or h < 2:
+            return
+        self._round_rect(0, 0, w, h, self.radius, self._current_color)
+        self.create_text(w // 2, h // 2, text=self.btn_text,
+                         fill=self.fg_color, font=self.btn_font)
+
+    def _set_color(self, color):
+        self._current_color = color
+        self._draw()
+
+
 class AynThorWallpaperTool:
     def __init__(self, root):
         self.root = root
@@ -67,12 +111,12 @@ class AynThorWallpaperTool:
         self.root.geometry("500x560")
         self.root.resizable(False, False)
 
-        BG_COLOR = "#2b2b2b"
-        FG_COLOR = "#e0e0e0"
-        ACCENT = "#5c9eed"
-        FRAME_BG = "#353535"
-        PATH_FG = "#a0a0a0"
-        IMPORT_COLOR = "#e8a035"
+        BG_COLOR = "#1a1a1a"
+        FG_COLOR = "#f0f0f0"
+        ACCENT = "#f0c040"
+        FRAME_BG = "#242424"
+        PATH_FG = "#888888"
+        IMPORT_COLOR = "#5b8dd9"
 
         self.root.configure(bg=BG_COLOR)
 
@@ -88,17 +132,8 @@ class AynThorWallpaperTool:
         style.configure("TLabel", background=BG_COLOR, foreground=FG_COLOR, font=("Segoe UI", 10))
         style.configure("Title.TLabel", background=BG_COLOR, foreground=FG_COLOR, font=("Segoe UI", 16, "bold"))
         style.configure("Path.TLabel", background=FRAME_BG, foreground=PATH_FG, font=("Segoe UI", 9))
-        style.configure("TButton", font=("Segoe UI", 10), padding=6)
         style.configure("TLabelframe", background=FRAME_BG, foreground=FG_COLOR, font=("Segoe UI", 10, "bold"))
         style.configure("TLabelframe.Label", background=BG_COLOR, foreground=ACCENT, font=("Segoe UI", 10, "bold"))
-        style.configure("Generate.TButton", font=("Segoe UI", 12, "bold"), padding=10)
-        style.map("Generate.TButton",
-                  background=[("active", "#4a8bd4"), ("!active", ACCENT)],
-                  foreground=[("active", "white"), ("!active", "white")])
-        style.configure("Import.TButton", font=("Segoe UI", 10, "bold"), padding=8)
-        style.map("Import.TButton",
-                  background=[("active", "#c4882a"), ("!active", IMPORT_COLOR)],
-                  foreground=[("active", "white"), ("!active", "white")])
 
         main_frame = ttk.Frame(root, padding=15)
         main_frame.pack(fill="both", expand=True)
@@ -106,11 +141,15 @@ class AynThorWallpaperTool:
         ttk.Label(main_frame, text="Ayn Thor Wallpaper Adapter", style="Title.TLabel").pack(pady=(0, 10))
 
         # --- Import 3DS ---
-        ttk.Button(
+        RoundedButton(
             main_frame,
             text="Importer un thème 3DS (.zip)",
             command=self.import_3ds_theme,
-            style="Import.TButton"
+            bg_color=IMPORT_COLOR,
+            hover_color="#4a78c0",
+            font=("Segoe UI", 10, "bold"),
+            height=38,
+            canvas_bg=BG_COLOR,
         ).pack(fill="x", pady=(0, 4))
         self.zip_path_label = ttk.Label(main_frame, text="", style="Path.TLabel")
         self.zip_path_label.pack(anchor="w", fill="x", pady=(0, 10))
@@ -122,7 +161,16 @@ class AynThorWallpaperTool:
         top_frame = ttk.LabelFrame(main_frame, text='Écran 6" (Haut) — 1920×1080', padding=10)
         top_frame.pack(fill="x", pady=(0, 8))
 
-        ttk.Button(top_frame, text="Parcourir...", command=self.load_top).pack(anchor="w")
+        RoundedButton(
+            top_frame,
+            text="Parcourir...",
+            command=self.load_top,
+            bg_color=ACCENT,
+            hover_color="#c9a030",
+            height=30,
+            width=110,
+            canvas_bg=FRAME_BG,
+        ).pack(anchor="w")
         self.top_path_label = ttk.Label(top_frame, text="Aucun fichier sélectionné", style="Path.TLabel")
         self.top_path_label.pack(anchor="w", pady=(4, 0), fill="x")
 
@@ -130,7 +178,16 @@ class AynThorWallpaperTool:
         bottom_frame = ttk.LabelFrame(main_frame, text='Écran 3.92" (Bas) — 1240×1080', padding=10)
         bottom_frame.pack(fill="x", pady=(0, 8))
 
-        ttk.Button(bottom_frame, text="Parcourir...", command=self.load_bottom).pack(anchor="w")
+        RoundedButton(
+            bottom_frame,
+            text="Parcourir...",
+            command=self.load_bottom,
+            bg_color=ACCENT,
+            hover_color="#c9a030",
+            height=30,
+            width=110,
+            canvas_bg=FRAME_BG,
+        ).pack(anchor="w")
         self.bottom_path_label = ttk.Label(bottom_frame, text="Aucun fichier sélectionné", style="Path.TLabel")
         self.bottom_path_label.pack(anchor="w", pady=(4, 0), fill="x")
 
@@ -138,17 +195,30 @@ class AynThorWallpaperTool:
         output_frame = ttk.LabelFrame(main_frame, text="Dossier de sortie", padding=10)
         output_frame.pack(fill="x", pady=(0, 15))
 
-        ttk.Button(output_frame, text="Parcourir...", command=self.choose_output).pack(anchor="w")
+        RoundedButton(
+            output_frame,
+            text="Parcourir...",
+            command=self.choose_output,
+            bg_color=ACCENT,
+            hover_color="#c9a030",
+            height=30,
+            width=110,
+            canvas_bg=FRAME_BG,
+        ).pack(anchor="w")
         self.output_path_label = ttk.Label(output_frame, text="Aucun dossier sélectionné", style="Path.TLabel")
         self.output_path_label.pack(anchor="w", pady=(4, 0), fill="x")
 
         # --- Bouton Générer ---
-        ttk.Button(
+        RoundedButton(
             main_frame,
             text="Générer les wallpapers",
             command=self.process_images,
-            style="Generate.TButton"
-        ).pack(pady=(5, 0), ipadx=20)
+            bg_color=ACCENT,
+            hover_color="#c9a030",
+            font=("Segoe UI", 12, "bold"),
+            height=46,
+            canvas_bg=BG_COLOR,
+        ).pack(fill="x", pady=(5, 0))
 
     def import_3ds_theme(self):
         zip_path = filedialog.askopenfilename(
